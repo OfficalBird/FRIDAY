@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#090c14">
+<title>F.R.I.D.A.Y. — Local AI Assistant</title>
+<style>
+:root{color-scheme:dark;--bg:#090c14;--panel:#101622;--line:#273448;--ink:#e8f0fb;--muted:#9bacc4;--cyan:#78f2eb;--mono:"IBM Plex Mono",ui-monospace,monospace;--sans:Inter,system-ui,sans-serif}
+*{box-sizing:border-box}
+body{margin:0;color:var(--ink);background:radial-gradient(ellipse at 25% 45%,#10263a 0%,transparent 48%),var(--bg);font:15px/1.6 var(--sans)}
+button,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+button:focus-visible,textarea:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+button:disabled{opacity:.52;cursor:default}
+.frame{max-width:1440px;margin:auto;min-height:100dvh;display:flex;flex-direction:column;padding:0 4vw}
+header,footer{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:20px 0;font:12px var(--mono)}
+header{border-bottom:1px solid var(--line)}
+.brand{letter-spacing:.22em;color:var(--cyan);font-weight:700}
+header span:last-child,footer{color:var(--muted)}
+main{flex:1;display:grid;grid-template-columns:minmax(240px,.85fr) minmax(0,1.35fr);align-items:center;gap:5vw;padding:36px 0}
+.core{text-align:center}
+.orbit{position:relative;width:min(280px,65vw);aspect-ratio:1;margin:0 auto 25px;display:grid;place-items:center;isolation:isolate;border:1px solid #416479;border-radius:50%;background:repeating-radial-gradient(circle,transparent 0 19px,#71f5ed13 20px 21px,transparent 22px 34px)}
+.orbit:before,.orbit:after{content:"";position:absolute;border-radius:50%;inset:8%;border:2px solid transparent;border-top-color:#75fff2;border-bottom-color:#488ef7;filter:drop-shadow(0 0 8px #76f2ee);animation:spin 16s linear infinite}
+.orbit:after{inset:20%;border-top-color:#73a8ff;border-bottom-color:transparent;border-right-color:#75fff2;animation:spin 10s linear infinite reverse}
+.reactor{width:44%;aspect-ratio:1;border-radius:50%;border:1px solid #b8fff7;background:radial-gradient(circle,#cefff6 0%,#75f2ea 8%,#245c79 32%,#0d1a30 67%);box-shadow:0 0 35px #63f3ed55,inset 0 0 25px #8affff55}
+body[data-busy] .orbit:before{animation-duration:2s}
+body[data-busy] .orbit:after{animation-duration:3s}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.orbit:before,.orbit:after{animation:none}}
+h1{font-size:clamp(28px,4.8vw,64px);line-height:1.1;letter-spacing:.065em;margin:0}
+.core p{color:var(--muted);margin:12px 0}
+#model{font:12px var(--mono);color:var(--cyan)}
+.console{background:#101622ed;border:1px solid var(--line);border-radius:18px;box-shadow:0 20px 65px #0007;min-width:0;display:flex;flex-direction:column;height:clamp(460px,72dvh,740px)}
+.bar{display:flex;align-items:center;gap:8px;padding:14px 18px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.bar h2{font-size:14px;margin:0 auto 0 0}
+.secondary,.suggestions button{border:1px solid var(--line);background:#141e2d;border-radius:8px;padding:6px 10px;font-size:12px}
+.secondary:hover,.suggestions button:hover{border-color:var(--cyan)}
+#thread{flex:1;min-height:0;overflow:auto;padding:20px;scrollbar-color:#466278 transparent}
+.welcome{margin:15px 0 20px}
+.welcome h3{font-size:clamp(21px,3vw,32px);line-height:1.25;margin:0 0 12px}
+.suggestions{display:flex;gap:8px;flex-wrap:wrap}
+.message{margin:0 0 12px;padding:10px 13px;border:1px solid var(--line);border-radius:10px;background:#131c2b;white-space:pre-wrap;overflow-wrap:anywhere}
+.message[data-role="You"]{margin-left:12%;background:#162c3c}
+.message strong{display:block;color:var(--cyan);font:11px var(--mono);margin-bottom:6px}
+form{display:flex;align-items:flex-end;gap:8px;margin:0 16px;padding:8px;background:var(--bg);border:1px solid var(--line);border-radius:12px}
+textarea{flex:1;min-width:0;resize:vertical;max-height:150px;padding:8px;background:transparent;border:0}
+.send{background:var(--cyan);color:#08141c;border:0;border-radius:8px;padding:9px 14px;font-weight:750}
+#status{margin:8px 18px 12px;color:var(--muted);font:12px/1.4 var(--mono);min-height:1.4em}
+#status.error{color:#ffaaa8}
+footer{border-top:1px solid var(--line)}
+@media(max-width:760px){main{grid-template-columns:1fr;gap:24px;padding:24px 0}.orbit{width:120px;margin-bottom:12px}.core p{margin:6px 0}.console{height:62dvh;min-height:420px}}
+</style>
+</head>
+<body>
+<div class="frame">
+<header><span class="brand">F.R.I.D.A.Y.</span><span>LOCAL AI ASSISTANT</span></header>
+<main>
+<section class="core" aria-label="Assistant overview">
+<div class="orbit" aria-hidden="true"><div class="reactor"></div></div>
+<h1>F.R.I.D.A.Y.</h1>
+<p>Personal AI for code, planning, and ideas.</p>
+<span id="model">Loading model configuration…</span>
+</section>
+<section class="console" aria-labelledby="chat-title">
+<div class="bar"><h2 id="chat-title">Conversation</h2><button type="button" class="secondary" id="voice" aria-pressed="false">Voice off</button><button type="button" class="secondary" id="reset">New chat</button></div>
+<div id="thread" role="log" aria-label="Messages" tabindex="0">
+<div class="welcome" id="welcome">
+<h3>How can I help?</h3>
+<div class="suggestions">
+<button type="button" data-prompt="Give me a short checklist for debugging a Python script.">Debug some code</button>
+<button type="button" data-prompt="Help me break a small software project into three milestones.">Plan a project</button>
+<button type="button" data-prompt="Explain what an API is using a simple example.">Explain a concept</button>
+</div></div></div>
+<form id="composer"><textarea rows="1" maxlength="4000" id="prompt" aria-label="Message" placeholder="Message F.R.I.D.A.Y."></textarea><button class="send" id="send" type="submit">Send</button></form>
+<p id="status" role="status">Ready</p>
+</section>
+</main>
+<footer><span>Runs on this computer</span><span>Enter to send · Shift + Enter for a new line</span></footer>
+</div>
+<script>
+const byId = id => document.getElementById(id);
+const form = byId("composer");
+const prompt = byId("prompt");
+const thread = byId("thread");
+const welcome = byId("welcome");
+const send = byId("send");
+const reset = byId("reset");
+const voice = byId("voice");
+const status = byId("status");
+const turns = [];
+let busy = false;
+let speak = false;
+
+function setStatus(message, error = false) {
+  status.textContent = message;
+  status.classList.toggle("error", error);
+}
+
+function addMessage(role, text) {
+  const message = document.createElement("div");
+  message.className = "message";
+  message.dataset.role = role;
+  const label = document.createElement("strong");
+  label.textContent = role;
+  message.append(label, document.createTextNode(text));
+  thread.append(message);
+  thread.scrollTop = thread.scrollHeight;
+  return message;
+}
+
+fetch("/api/config")
+  .then(response => {
+    if (!response.ok) throw new Error("Configuration unavailable");
+    return response.json();
+  })
+  .then(config => { byId("model").textContent = config.model; })
+  .catch(() => { byId("model").textContent = "Configuration unavailable"; });
+
+voice.disabled = !("speechSynthesis" in window && "SpeechSynthesisUtterance" in window);
+voice.addEventListener("click", () => {
+  speak = !speak;
+  voice.setAttribute("aria-pressed", String(speak));
+  voice.textContent = speak ? "Voice on" : "Voice off";
+  if (!speak) window.speechSynthesis.cancel();
+});
+
+reset.addEventListener("click", () => {
+  turns.length = 0;
+  thread.replaceChildren(welcome);
+  welcome.hidden = false;
+  prompt.value = "";
+  if (speak) window.speechSynthesis.cancel();
+  setStatus("New chat started");
+  prompt.focus();
+});
+
+document.querySelectorAll("[data-prompt]").forEach(button => {
+  button.addEventListener("click", () => {
+    prompt.value = button.dataset.prompt;
+    prompt.focus();
+  });
+});
+
+prompt.addEventListener("keydown", event => {
+  if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
+    event.preventDefault();
+    form.requestSubmit();
+  }
+});
+
+form.addEventListener("submit", async event => {
+  event.preventDefault();
+  const user = prompt.value.trim();
+  if (!user || busy) return;
+  busy = true;
+  send.disabled = reset.disabled = true;
+  prompt.value = "";
+  welcome.hidden = true;
+  document.body.dataset.busy = "";
+  setStatus("Generating a reply…");
+  const pending = addMessage("You", user);
+  try {
+    const response = await fetch("/api/chat", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({prompt: user, turns: turns.slice(-6)})
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || "Chat request failed.");
+    addMessage("F.R.I.D.A.Y.", result.answer);
+    turns.push({user, assistant: result.answer.slice(0, 4000)});
+    if (turns.length > 6) turns.shift();
+    setStatus("Ready");
+  } catch (error) {
+    pending.remove();
+    if (!prompt.value) prompt.value = user;
+    welcome.hidden = turns.length > 0;
+    setStatus(error.message || "Chat request failed.", true);
+    return;
+  } finally {
+    busy = false;
+    send.disabled = reset.disabled = false;
+    delete document.body.dataset.busy;
+  }
+  if (speak) {
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(new SpeechSynthesisUtterance(thread.lastElementChild.lastChild.textContent));
+  }
+});
+</script>
+</body>
+</html>
